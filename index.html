@@ -36,7 +36,7 @@
     .control-group {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
     }
 
     .control-group label {
@@ -47,7 +47,7 @@
     }
 
     .control-group select, .control-group input[type="number"] {
-      padding: 5px 8px;
+      padding: 4px 6px;
       font-size: 12px;
       border-radius: 6px;
       border: 1px solid #ccc;
@@ -55,14 +55,14 @@
     }
 
     .control-group input[type="range"] {
-      width: 70px;
+      width: 60px;
       cursor: pointer;
     }
 
     .val-display {
       font-size: 11px;
       color: #666;
-      min-width: 30px;
+      min-width: 28px;
     }
 
     .btn-primary {
@@ -241,13 +241,13 @@
     </div>
 
     <div class="control-group">
-      <label for="charsPerLine">1行の文字数:</label>
-      <input type="number" id="charsPerLine" value="20" min="5" max="50" style="width: 50px;">
+      <label for="charsPerLine">1行字数:</label>
+      <input type="number" id="charsPerLine" value="20" min="5" max="50" style="width: 45px;">
     </div>
 
     <div class="control-group">
-      <label for="linesPerPage">1ページの行数:</label>
-      <input type="number" id="linesPerPage" value="20" min="5" max="50" style="width: 50px;">
+      <label for="linesPerPage">行数:</label>
+      <input type="number" id="linesPerPage" value="20" min="5" max="50" style="width: 45px;">
     </div>
 
     <div class="control-group">
@@ -262,10 +262,29 @@
       <span class="val-display" id="lineHeightVal">1.8</span>
     </div>
 
+    <!-- 上下左右の余白設定（個別にスライダー化） -->
     <div class="control-group">
-      <label for="margin">余白:</label>
-      <input type="range" id="margin" min="10" max="40" step="1" value="20">
-      <span class="val-display" id="marginVal">20mm</span>
+      <label for="marginTop">上余白:</label>
+      <input type="range" id="marginTop" min="10" max="50" step="1" value="20">
+      <span class="val-display" id="marginTopVal">20mm</span>
+    </div>
+
+    <div class="control-group">
+      <label for="marginBottom">下余白:</label>
+      <input type="range" id="marginBottom" min="10" max="50" step="1" value="20">
+      <span class="val-display" id="marginBottomVal">20mm</span>
+    </div>
+
+    <div class="control-group">
+      <label for="marginRight">右余白:</label>
+      <input type="range" id="marginRight" min="10" max="50" step="1" value="20">
+      <span class="val-display" id="marginRightVal">20mm</span>
+    </div>
+
+    <div class="control-group">
+      <label for="marginLeft">左余白:</label>
+      <input type="range" id="marginLeft" min="10" max="50" step="1" value="20">
+      <span class="val-display" id="marginLeftVal">20mm</span>
     </div>
 
     <button class="btn-primary" onclick="window.print()">PDF出力 / 印刷</button>
@@ -296,8 +315,16 @@
     const fontSizeVal = document.getElementById('fontSizeVal');
     const lineHeight = document.getElementById('lineHeight');
     const lineHeightVal = document.getElementById('lineHeightVal');
-    const margin = document.getElementById('margin');
-    const marginVal = document.getElementById('marginVal');
+
+    // 上下左右の余白要素
+    const marginTop = document.getElementById('marginTop');
+    const marginTopVal = document.getElementById('marginTopVal');
+    const marginBottom = document.getElementById('marginBottom');
+    const marginBottomVal = document.getElementById('marginBottomVal');
+    const marginRight = document.getElementById('marginRight');
+    const marginRightVal = document.getElementById('marginRightVal');
+    const marginLeft = document.getElementById('marginLeft');
+    const marginLeftVal = document.getElementById('marginLeftVal');
 
     function switchTab(mode) {
       const tabEdit = document.getElementById('tabEdit');
@@ -326,7 +353,6 @@
       const charsPerLine = parseInt(charsPerLineInput.value, 10) || 20;
       const linesPerPage = parseInt(linesPerPageInput.value, 10) || 20;
       
-      // 1ページあたりの最大想定文字数（1行文字数 × 行数）
       const totalPageCapacity = charsPerLine * linesPerPage;
 
       const lines = text.split(/\r?\n/);
@@ -335,7 +361,6 @@
       let currentLength = 0;
 
       lines.forEach(line => {
-        // 段落単位でキャパシティを超過する場合に改ページ
         if (currentLength + line.length > totalPageCapacity && currentPageText !== '') {
           pagesHTML.push(currentPageText);
           currentPageText = '';
@@ -363,24 +388,33 @@
       const papers = document.querySelectorAll('.paper');
       const fs = fontSize.value;
       const lh = lineHeight.value;
-      const mg = margin.value;
+      
+      const mTop = marginTop.value;
+      const mBottom = marginBottom.value;
+      const mRight = marginRight.value;
+      const mLeft = marginLeft.value;
+      
       const charsPerLine = parseInt(charsPerLineInput.value, 10) || 20;
 
       fontSizeVal.textContent = `${fs}pt`;
       lineHeightVal.textContent = lh;
-      marginVal.textContent = `${mg}mm`;
+
+      marginTopVal.textContent = `${mTop}mm`;
+      marginBottomVal.textContent = `${mBottom}mm`;
+      marginRightVal.textContent = `${mRight}mm`;
+      marginLeftVal.textContent = `${mLeft}mm`;
 
       papers.forEach(paper => {
         paper.className = `paper indent-${indentMode.value}`;
         paper.style.fontFamily = fontSelect.value;
         paper.style.fontSize = `${fs}pt`;
         paper.style.lineHeight = lh;
-        paper.style.padding = `${mg}mm`;
+        
+        // 上・右・下・左の個別余白を CSS padding に設定
+        paper.style.padding = `${mTop}mm ${mLeft}mm ${mBottom}mm ${mRight}mm`;
 
-        // 1行の文字数（高さ方向）をCSSの max-height で制御
-        // (文字サイズ(pt) * 1文字あたりの変換係数 * 文字数)
         const lineMaxHeightPt = fs * charsPerLine * 1.05;
-        paper.style.maxHeight = `calc(${lineMaxHeightPt}pt + ${mg * 2}mm)`;
+        paper.style.maxHeight = `calc(${lineMaxHeightPt}pt + ${parseInt(mTop) + parseInt(mBottom)}mm)`;
 
         const paragraphs = paper.querySelectorAll('p');
         paragraphs.forEach(p => {
@@ -397,7 +431,11 @@
     indentMode.addEventListener('change', updateStyles);
     fontSize.addEventListener('input', updateStyles);
     lineHeight.addEventListener('input', updateStyles);
-    margin.addEventListener('input', updateStyles);
+
+    marginTop.addEventListener('input', updateStyles);
+    marginBottom.addEventListener('input', updateStyles);
+    marginRight.addEventListener('input', updateStyles);
+    marginLeft.addEventListener('input', updateStyles);
 
     updatePreview();
   </script>
