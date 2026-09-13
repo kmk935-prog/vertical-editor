@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>縦書きテキストエディタ</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;700&family=Klee+One:wght@400;600&display=swap');
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background-color: #f4f6f8;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      color: #333;
+    }
+
+    /* 操作バー */
+    .toolbar {
+      background-color: #ffffff;
+      padding: 10px 16px;
+      border-bottom: 1px solid #e1e4e8;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      z-index: 10;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .control-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #444;
+      white-space: nowrap;
+    }
+
+    .control-group select, .control-group input[type="number"] {
+      padding: 5px 8px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      background-color: #fff;
+    }
+
+    .control-group input[type="range"] {
+      width: 70px;
+      cursor: pointer;
+    }
+
+    .val-display {
+      font-size: 11px;
+      color: #666;
+      min-width: 30px;
+    }
+
+    .btn-primary {
+      margin-left: auto;
+      padding: 7px 14px;
+      font-size: 13px;
+      border-radius: 6px;
+      border: none;
+      background-color: #0066cc;
+      color: white;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    /* スマホ用 モード切り替えタブ */
+    .view-tabs {
+      display: none;
+      background-color: #e4e7eb;
+      padding: 4px;
+      gap: 4px;
+      border-bottom: 1px solid #d0d7de;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 8px;
+      font-size: 13px;
+      font-weight: bold;
+      border: none;
+      background: none;
+      border-radius: 4px;
+      color: #555;
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      background-color: #fff;
+      color: #0066cc;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* メイン作業領域 */
+    .workspace {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* 入力エリア */
+    .editor-container {
+      width: 400px;
+      padding: 12px;
+      border-right: 1px solid #e1e4e8;
+      background-color: #fff;
+    }
+
+    textarea {
+      width: 100%;
+      height: 100%;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 14px;
+      line-height: 1.6;
+      resize: none;
+      outline: none;
+      font-family: inherit;
+    }
+
+    /* プレビュー表示エリア */
+    .preview-container {
+      flex: 1;
+      padding: 20px;
+      overflow: auto;
+      background-color: #525659;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      direction: rtl; 
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* 用紙 1枚 */
+    .paper {
+      direction: ltr;
+      background-color: white;
+      width: 210mm;
+      height: 297mm;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      position: relative;
+      
+      writing-mode: vertical-rl;
+      -webkit-writing-mode: vertical-rl;
+      text-align: justify;
+      word-break: break-all;
+    }
+
+    .paper p { margin: 0; }
+
+    /* 字下げスタイル */
+    .indent-normal p { text-indent: 1em; }
+    .indent-normal p.no-indent { text-indent: 0; }
+    .indent-hanging p { text-indent: -1em; padding-top: 1em; }
+
+    .page-number {
+      position: absolute;
+      bottom: 8mm;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10pt;
+      color: #888;
+      writing-mode: horizontal-tb;
+    }
+
+    /* モバイル・レスポンス設定 */
+    @media (max-width: 768px) {
+      .view-tabs {
+        display: flex;
+      }
+      .workspace {
+        position: relative;
+      }
+      .editor-container {
+        width: 100%;
+        border-right: none;
+        display: block;
+      }
+      .preview-container {
+        width: 100%;
+        display: none;
+      }
+      /* プレビューモード表示時 */
+      body.show-preview .editor-container {
+        display: none;
+      }
+      body.show-preview .preview-container {
+        display: flex;
+      }
+      .btn-primary {
+        width: 100%;
+        margin-top: 4px;
+      }
+    }
+
+    /* 印刷・PDF保存 */
+    @media print {
+      .toolbar, .view-tabs, .editor-container {
+        display: none !important;
+      }
+      body { background: none; }
+      .workspace { overflow: visible; display: block; }
+      .preview-container {
+        padding: 0;
+        background: none;
+        display: block !important;
+        direction: ltr;
+      }
+      .paper {
+        box-shadow: none;
+        width: 100%;
+        height: 100vh;
+        page-break-after: always;
+        break-after: page;
+      }
+      .page-number { display: none; }
+      @page { size: A4 portrait; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- スマホ用 タブ切り替え -->
+  <div class="view-tabs">
+    <button class="tab-btn active" id="tabEdit" onclick="switchTab('edit')">✏️ テキスト入力</button>
+    <button class="tab-btn" id="tabPreview" onclick="switchTab('preview')">📖 縦書きプレビュー</button>
+  </div>
+
+  <!-- 操作用バー -->
+  <div class="toolbar">
+    <div class="control-group">
+      <label for="fontSelect">フォント:</label>
+      <select id="fontSelect">
+        <option value="'Shippori Mincho', serif">しっぽり明朝</option>
+        <option value="'Zen Kaku Gothic New', sans-serif">Zen 角ゴシック</option>
+        <option value="'Klee One', cursive">クレー One</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label for="indentMode">字下げ:</label>
+      <select id="indentMode">
+        <option value="normal">1字下げ</option>
+        <option value="hanging">2行目以降</option>
+        <option value="none">なし</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label for="fontSize">文字:</label>
+      <input type="range" id="fontSize" min="10" max="24" step="0.5" value="14">
+      <span class="val-display" id="fontSizeVal">14pt</span>
+    </div>
+
+    <div class="control-group">
+      <label for="lineHeight">行間:</label>
+      <input type="range" id="lineHeight" min="1.2" max="2.8" step="0.1" value="1.8">
+      <span class="val-display" id="lineHeightVal">1.8</span>
+    </div>
+
+    <div class="control-group">
+      <label for="margin">余白:</label>
+      <input type="range" id="margin" min="10" max="40" step="1" value="20">
+      <span class="val-display" id="marginVal">20mm</span>
+    </div>
+
+    <div class="control-group">
+      <label for="charsPerPage">文字数:</label>
+      <input type="number" id="charsPerPage" value="400" min="100" max="1500" step="50" style="width: 55px;">
+    </div>
+
+    <button class="btn-primary" onclick="window.print()">PDF出力 / 印刷</button>
+  </div>
+
+  <!-- エディタ & プレビュー -->
+  <div class="workspace">
+    <div class="editor-container">
+      <textarea id="inputText" placeholder="ここにテキストを入力してください...">吾輩は猫である。名前はまだ無い。
+どこで生れたか頓と見当がつかぬ。何でも暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。
+「ニャー、ニャー」
+吾輩はここで初めて人間というものを見た。しかもあとで聞くとそれは書生という人間中で一番獰悪な種族であったそうだ。
+書生というのは時々我々を捕えて煮て食うという話である。しかし当時は何という考もなかったから別段恐しいとも思わなかった。ただ彼の掌に載せられてスーと持ち上げられた時何だかフワフワした感じがあったばかりである。</textarea>
+    </div>
+
+    <div class="preview-container" id="previewContainer"></div>
+  </div>
+
+  <script>
+    const inputText = document.getElementById('inputText');
+    const previewContainer = document.getElementById('previewContainer');
+    const charsPerPageInput = document.getElementById('charsPerPage');
+
+    const fontSelect = document.getElementById('fontSelect');
+    const indentMode = document.getElementById('indentMode');
+    const fontSize = document.getElementById('fontSize');
+    const fontSizeVal = document.getElementById('fontSizeVal');
+    const lineHeight = document.getElementById('lineHeight');
+    const lineHeightVal = document.getElementById('lineHeightVal');
+    const margin = document.getElementById('margin');
+    const marginVal = document.getElementById('marginVal');
+
+    // スマホ用タブ切り替え処理
+    function switchTab(mode) {
+      const tabEdit = document.getElementById('tabEdit');
+      const tabPreview = document.getElementById('tabPreview');
+      if (mode === 'preview') {
+        document.body.classList.add('show-preview');
+        tabPreview.classList.add('active');
+        tabEdit.classList.remove('active');
+      } else {
+        document.body.classList.remove('show-preview');
+        tabEdit.classList.add('active');
+        tabPreview.classList.remove('active');
+      }
+    }
+
+    function formatParagraph(line) {
+      const trimmed = line.trim();
+      if (!trimmed) return '';
+      const isBracketStart = /^[「『（【〈《“"『]/.test(trimmed);
+      const className = isBracketStart ? 'class="no-indent"' : '';
+      return `<p ${className}>${trimmed}</p>`;
+    }
+
+    function updatePreview() {
+      const text = inputText.value;
+      const charsPerPage = parseInt(charsPerPageInput.value, 10) || 400;
+      
+      const lines = text.split(/\r?\n/);
+      const pagesHTML = [];
+      let currentPageText = '';
+      let currentLength = 0;
+
+      lines.forEach(line => {
+        if (currentLength + line.length > charsPerPage && currentPageText !== '') {
+          pagesHTML.push(currentPageText);
+          currentPageText = '';
+          currentLength = 0;
+        }
+        currentPageText += formatParagraph(line);
+        currentLength += line.length;
+      });
+
+      if (currentPageText !== '') {
+        pagesHTML.push(currentPageText);
+      }
+
+      previewContainer.innerHTML = pagesHTML.map((pageContent, index) => `
+        <div class="paper indent-${indentMode.value}">
+          ${pageContent}
+          <div class="page-number">- ${index + 1} -</div>
+        </div>
+      `).join('');
+
+      updateStyles();
+    }
+
+    function updateStyles() {
+      const papers = document.querySelectorAll('.paper');
+      const fs = fontSize.value;
+      const lh = lineHeight.value;
+      const mg = margin.value;
+
+      fontSizeVal.textContent = `${fs}pt`;
+      lineHeightVal.textContent = lh;
+      marginVal.textContent = `${mg}mm`;
+
+      papers.forEach(paper => {
+        paper.className = `paper indent-${indentMode.value}`;
+        paper.style.fontFamily = fontSelect.value;
+        paper.style.fontSize = `${fs}pt`;
+        paper.style.lineHeight = lh;
+        paper.style.padding = `${mg}mm`;
+
+        const paragraphs = paper.querySelectorAll('p');
+        paragraphs.forEach(p => {
+          p.style.marginLeft = `${(lh - 1) * 0.6}em`;
+        });
+      });
+    }
+
+    inputText.addEventListener('input', updatePreview);
+    charsPerPageInput.addEventListener('input', updatePreview);
+
+    fontSelect.addEventListener('change', updateStyles);
+    indentMode.addEventListener('change', updateStyles);
+    fontSize.addEventListener('input', updateStyles);
+    lineHeight.addEventListener('input', updateStyles);
+    margin.addEventListener('input', updateStyles);
+
+    updatePreview();
+  </script>
+</body>
+</html>
