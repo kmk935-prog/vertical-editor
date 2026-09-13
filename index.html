@@ -113,7 +113,7 @@
 
     /* 入力エリア */
     .editor-container {
-      width: 400px;
+      width: 380px;
       padding: 12px;
       border-right: 1px solid #e1e4e8;
       background-color: #fff;
@@ -178,41 +178,20 @@
       writing-mode: horizontal-tb;
     }
 
-    /* モバイル・レスポンス設定 */
+    /* レスポンシブ */
     @media (max-width: 768px) {
-      .view-tabs {
-        display: flex;
-      }
-      .workspace {
-        position: relative;
-      }
-      .editor-container {
-        width: 100%;
-        border-right: none;
-        display: block;
-      }
-      .preview-container {
-        width: 100%;
-        display: none;
-      }
-      /* プレビューモード表示時 */
-      body.show-preview .editor-container {
-        display: none;
-      }
-      body.show-preview .preview-container {
-        display: flex;
-      }
-      .btn-primary {
-        width: 100%;
-        margin-top: 4px;
-      }
+      .view-tabs { display: flex; }
+      .workspace { position: relative; }
+      .editor-container { width: 100%; border-right: none; display: block; }
+      .preview-container { width: 100%; display: none; }
+      body.show-preview .editor-container { display: none; }
+      body.show-preview .preview-container { display: flex; }
+      .btn-primary { width: 100%; margin-top: 4px; }
     }
 
     /* 印刷・PDF保存 */
     @media print {
-      .toolbar, .view-tabs, .editor-container {
-        display: none !important;
-      }
+      .toolbar, .view-tabs, .editor-container { display: none !important; }
       body { background: none; }
       .workspace { overflow: visible; display: block; }
       .preview-container {
@@ -262,6 +241,16 @@
     </div>
 
     <div class="control-group">
+      <label for="charsPerLine">1行の文字数:</label>
+      <input type="number" id="charsPerLine" value="20" min="5" max="50" style="width: 50px;">
+    </div>
+
+    <div class="control-group">
+      <label for="linesPerPage">1ページの行数:</label>
+      <input type="number" id="linesPerPage" value="20" min="5" max="50" style="width: 50px;">
+    </div>
+
+    <div class="control-group">
       <label for="fontSize">文字:</label>
       <input type="range" id="fontSize" min="10" max="24" step="0.5" value="14">
       <span class="val-display" id="fontSizeVal">14pt</span>
@@ -277,11 +266,6 @@
       <label for="margin">余白:</label>
       <input type="range" id="margin" min="10" max="40" step="1" value="20">
       <span class="val-display" id="marginVal">20mm</span>
-    </div>
-
-    <div class="control-group">
-      <label for="charsPerPage">文字数:</label>
-      <input type="number" id="charsPerPage" value="400" min="100" max="1500" step="50" style="width: 55px;">
     </div>
 
     <button class="btn-primary" onclick="window.print()">PDF出力 / 印刷</button>
@@ -303,7 +287,8 @@
   <script>
     const inputText = document.getElementById('inputText');
     const previewContainer = document.getElementById('previewContainer');
-    const charsPerPageInput = document.getElementById('charsPerPage');
+    const charsPerLineInput = document.getElementById('charsPerLine');
+    const linesPerPageInput = document.getElementById('linesPerPage');
 
     const fontSelect = document.getElementById('fontSelect');
     const indentMode = document.getElementById('indentMode');
@@ -314,7 +299,6 @@
     const margin = document.getElementById('margin');
     const marginVal = document.getElementById('marginVal');
 
-    // スマホ用タブ切り替え処理
     function switchTab(mode) {
       const tabEdit = document.getElementById('tabEdit');
       const tabPreview = document.getElementById('tabPreview');
@@ -339,15 +323,20 @@
 
     function updatePreview() {
       const text = inputText.value;
-      const charsPerPage = parseInt(charsPerPageInput.value, 10) || 400;
+      const charsPerLine = parseInt(charsPerLineInput.value, 10) || 20;
+      const linesPerPage = parseInt(linesPerPageInput.value, 10) || 20;
       
+      // 1ページあたりの最大想定文字数（1行文字数 × 行数）
+      const totalPageCapacity = charsPerLine * linesPerPage;
+
       const lines = text.split(/\r?\n/);
       const pagesHTML = [];
       let currentPageText = '';
       let currentLength = 0;
 
       lines.forEach(line => {
-        if (currentLength + line.length > charsPerPage && currentPageText !== '') {
+        // 段落単位でキャパシティを超過する場合に改ページ
+        if (currentLength + line.length > totalPageCapacity && currentPageText !== '') {
           pagesHTML.push(currentPageText);
           currentPageText = '';
           currentLength = 0;
@@ -375,6 +364,7 @@
       const fs = fontSize.value;
       const lh = lineHeight.value;
       const mg = margin.value;
+      const charsPerLine = parseInt(charsPerLineInput.value, 10) || 20;
 
       fontSizeVal.textContent = `${fs}pt`;
       lineHeightVal.textContent = lh;
@@ -387,6 +377,11 @@
         paper.style.lineHeight = lh;
         paper.style.padding = `${mg}mm`;
 
+        // 1行の文字数（高さ方向）をCSSの max-height で制御
+        // (文字サイズ(pt) * 1文字あたりの変換係数 * 文字数)
+        const lineMaxHeightPt = fs * charsPerLine * 1.05;
+        paper.style.maxHeight = `calc(${lineMaxHeightPt}pt + ${mg * 2}mm)`;
+
         const paragraphs = paper.querySelectorAll('p');
         paragraphs.forEach(p => {
           p.style.marginLeft = `${(lh - 1) * 0.6}em`;
@@ -395,7 +390,8 @@
     }
 
     inputText.addEventListener('input', updatePreview);
-    charsPerPageInput.addEventListener('input', updatePreview);
+    charsPerLineInput.addEventListener('input', updatePreview);
+    linesPerPageInput.addEventListener('input', updatePreview);
 
     fontSelect.addEventListener('change', updateStyles);
     indentMode.addEventListener('change', updateStyles);
