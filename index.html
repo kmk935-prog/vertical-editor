@@ -77,7 +77,7 @@
       font-weight: 600;
     }
 
-    /* スマホ用 モード切り替えタブ */
+    /* スマホ用 タブ切り替え */
     .view-tabs {
       display: none;
       background-color: #e4e7eb;
@@ -161,9 +161,13 @@
       word-break: break-all;
     }
 
-    .paper p { margin: 0; }
+    /* 行間を均一に保つため、マージン・パディングをリセット */
+    .paper p {
+      margin: 0;
+      padding: 0;
+    }
 
-    /* 字下げスタイル */
+    /* 字下げスタイル（行間には影響を与えず文字位置のみ移動） */
     .indent-normal p { text-indent: 1em; }
     .indent-normal p.no-indent { text-indent: 0; }
     .indent-hanging p { text-indent: -1em; padding-top: 1em; }
@@ -262,7 +266,6 @@
       <span class="val-display" id="lineHeightVal">1.8</span>
     </div>
 
-    <!-- 上下左右の余白設定（個別にスライダー化） -->
     <div class="control-group">
       <label for="marginTop">上余白:</label>
       <input type="range" id="marginTop" min="10" max="50" step="1" value="20">
@@ -316,7 +319,6 @@
     const lineHeight = document.getElementById('lineHeight');
     const lineHeightVal = document.getElementById('lineHeightVal');
 
-    // 上下左右の余白要素
     const marginTop = document.getElementById('marginTop');
     const marginTopVal = document.getElementById('marginTopVal');
     const marginBottom = document.getElementById('marginBottom');
@@ -409,17 +411,10 @@
         paper.style.fontFamily = fontSelect.value;
         paper.style.fontSize = `${fs}pt`;
         paper.style.lineHeight = lh;
-        
-        // 上・右・下・左の個別余白を CSS padding に設定
         paper.style.padding = `${mTop}mm ${mLeft}mm ${mBottom}mm ${mRight}mm`;
 
         const lineMaxHeightPt = fs * charsPerLine * 1.05;
         paper.style.maxHeight = `calc(${lineMaxHeightPt}pt + ${parseInt(mTop) + parseInt(mBottom)}mm)`;
-
-        const paragraphs = paper.querySelectorAll('p');
-        paragraphs.forEach(p => {
-          p.style.marginLeft = `${(lh - 1) * 0.6}em`;
-        });
       });
     }
 
