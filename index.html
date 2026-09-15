@@ -149,8 +149,6 @@
     .paper {
       direction: ltr;
       background-color: white;
-      width: 210mm;
-      height: 297mm;
       flex-shrink: 0;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
       position: relative;
@@ -161,13 +159,11 @@
       word-break: break-all;
     }
 
-    /* 行間を均一に保つため、マージン・パディングをリセット */
     .paper p {
       margin: 0;
       padding: 0;
     }
 
-    /* 字下げスタイル（行間には影響を与えず文字位置のみ移動） */
     .indent-normal p { text-indent: 1em; }
     .indent-normal p.no-indent { text-indent: 0; }
     .indent-hanging p { text-indent: -1em; padding-top: 1em; }
@@ -182,7 +178,6 @@
       writing-mode: horizontal-tb;
     }
 
-    /* レスポンシブ */
     @media (max-width: 768px) {
       .view-tabs { display: flex; }
       .workspace { position: relative; }
@@ -206,15 +201,14 @@
       }
       .paper {
         box-shadow: none;
-        width: 100%;
-        height: 100vh;
         page-break-after: always;
         break-after: page;
       }
       .page-number { display: none; }
-      @page { size: A4 portrait; margin: 0; }
     }
   </style>
+  <!-- 印刷用動的スタイルタグ -->
+  <style id="printPageStyle">@page { size: A4 portrait; margin: 0; }</style>
 </head>
 <body>
 
@@ -226,6 +220,18 @@
 
   <!-- 操作用バー -->
   <div class="toolbar">
+    <!-- 用紙サイズ選択 -->
+    <div class="control-group">
+      <label for="pageSizeSelect">用紙サイズ:</label>
+      <select id="pageSizeSelect">
+        <option value="A4" data-w="210mm" data-h="297mm">A4 (210×297mm)</option>
+        <option value="B5" data-w="182mm" data-h="257mm">B5 (182×257mm)</option>
+        <option value="A5" data-w="148mm" data-h="210mm">A5 (148×210mm)</option>
+        <option value="JIS-B6" data-w="128mm" data-h="182mm">B6 / 四六判 (128×182mm)</option>
+        <option value="Hagaki" data-w="100mm" data-h="148mm">ハガキ / 文庫 (100×148mm)</option>
+      </select>
+    </div>
+
     <div class="control-group">
       <label for="fontSelect">フォント:</label>
       <select id="fontSelect">
@@ -256,8 +262,8 @@
 
     <div class="control-group">
       <label for="fontSize">文字:</label>
-      <input type="range" id="fontSize" min="10" max="24" step="0.5" value="14">
-      <span class="val-display" id="fontSizeVal">14pt</span>
+      <input type="range" id="fontSize" min="8" max="24" step="0.5" value="13">
+      <span class="val-display" id="fontSizeVal">13pt</span>
     </div>
 
     <div class="control-group">
@@ -268,26 +274,26 @@
 
     <div class="control-group">
       <label for="marginTop">上余白:</label>
-      <input type="range" id="marginTop" min="10" max="50" step="1" value="20">
-      <span class="val-display" id="marginTopVal">20mm</span>
+      <input type="range" id="marginTop" min="5" max="40" step="1" value="15">
+      <span class="val-display" id="marginTopVal">15mm</span>
     </div>
 
     <div class="control-group">
       <label for="marginBottom">下余白:</label>
-      <input type="range" id="marginBottom" min="10" max="50" step="1" value="20">
-      <span class="val-display" id="marginBottomVal">20mm</span>
+      <input type="range" id="marginBottom" min="5" max="40" step="1" value="15">
+      <span class="val-display" id="marginBottomVal">15mm</span>
     </div>
 
     <div class="control-group">
       <label for="marginRight">右余白:</label>
-      <input type="range" id="marginRight" min="10" max="50" step="1" value="20">
-      <span class="val-display" id="marginRightVal">20mm</span>
+      <input type="range" id="marginRight" min="5" max="40" step="1" value="15">
+      <span class="val-display" id="marginRightVal">15mm</span>
     </div>
 
     <div class="control-group">
       <label for="marginLeft">左余白:</label>
-      <input type="range" id="marginLeft" min="10" max="50" step="1" value="20">
-      <span class="val-display" id="marginLeftVal">20mm</span>
+      <input type="range" id="marginLeft" min="5" max="40" step="1" value="15">
+      <span class="val-display" id="marginLeftVal">15mm</span>
     </div>
 
     <button class="btn-primary" onclick="window.print()">PDF出力 / 印刷</button>
@@ -309,6 +315,8 @@
   <script>
     const inputText = document.getElementById('inputText');
     const previewContainer = document.getElementById('previewContainer');
+    const pageSizeSelect = document.getElementById('pageSizeSelect');
+    const printPageStyle = document.getElementById('printPageStyle');
     const charsPerLineInput = document.getElementById('charsPerLine');
     const linesPerPageInput = document.getElementById('linesPerPage');
 
@@ -396,7 +404,13 @@
       const mRight = marginRight.value;
       const mLeft = marginLeft.value;
       
-      const charsPerLine = parseInt(charsPerLineInput.value, 10) || 20;
+      const selectedOption = pageSizeSelect.options[pageSizeSelect.selectedIndex];
+      const paperWidth = selectedOption.getAttribute('data-w');
+      const paperHeight = selectedOption.getAttribute('data-h');
+      const paperSizeName = selectedOption.value;
+
+      // 印刷用CSS (@page) を連動して動的に書き換え
+      printPageStyle.textContent = `@page { size: ${paperSizeName === 'Hagaki' ? '100mm 148mm' : paperSizeName} portrait; margin: 0; }`;
 
       fontSizeVal.textContent = `${fs}pt`;
       lineHeightVal.textContent = lh;
@@ -408,13 +422,12 @@
 
       papers.forEach(paper => {
         paper.className = `paper indent-${indentMode.value}`;
+        paper.style.width = paperWidth;
+        paper.style.height = paperHeight;
         paper.style.fontFamily = fontSelect.value;
         paper.style.fontSize = `${fs}pt`;
         paper.style.lineHeight = lh;
         paper.style.padding = `${mTop}mm ${mLeft}mm ${mBottom}mm ${mRight}mm`;
-
-        const lineMaxHeightPt = fs * charsPerLine * 1.05;
-        paper.style.maxHeight = `calc(${lineMaxHeightPt}pt + ${parseInt(mTop) + parseInt(mBottom)}mm)`;
       });
     }
 
@@ -422,6 +435,7 @@
     charsPerLineInput.addEventListener('input', updatePreview);
     linesPerPageInput.addEventListener('input', updatePreview);
 
+    pageSizeSelect.addEventListener('change', updateStyles);
     fontSelect.addEventListener('change', updateStyles);
     indentMode.addEventListener('change', updateStyles);
     fontSize.addEventListener('input', updateStyles);
